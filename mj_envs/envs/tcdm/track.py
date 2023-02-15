@@ -13,7 +13,7 @@ import numpy as np
 import os
 import collections
 
-from pyquaternion import Quaternion
+# from pyquaternion import Quaternion
 
 # ToDo
 # - change target to reference
@@ -107,9 +107,15 @@ RoboHive:> For environment credits, please cite -
         # Adjust horizon if not motion_extrapolation
         if motion_extrapolation == False:
             self.spec.max_episode_steps = self.ref.horizon # doesn't work always. WIP
+
         # Adjust init as per the specified key
-        if self.sim.model.nkey>0:
-            self.init_qpos[:] = self.sim.model.key_qpos[0,:]
+        ref0 = self.ref.get_reference(self.motion_start_time)
+        self.init_qpos[:self.ref.robot_dim] = ref0.robot
+        self.init_qpos[self.ref.robot_dim:self.ref.robot_dim+3] = ref0.object[:3]
+        self.init_qpos[-3:] = quat2euler(ref0.object[3:])
+
+        # if self.sim.model.nkey>0:
+            # self.init_qpos[:] = self.sim.model.key_qpos[0,:]
 
 
     def to_quat(self, arr):
@@ -176,11 +182,15 @@ RoboHive:> For environment credits, please cite -
         obs_dict['hand_qvel_err'] = obs_dict['curr_hand_qvel']-obs_dict['targ_hand_qvel']
 
         obs_dict['obj_com_err'] =  obs_dict['curr_obj_com'] - obs_dict['targ_obj_com']
+        if obs_dict['time'] == 0:
+            print(f"Time: {obs_dict['time']} Error Pose: {obs_dict['hand_qpos_err']}    Error Obj:{obs_dict['obj_com_err']}")
+
+
         # obs_dict['obj_rot_err'] =  self.rotation_distance(obs_dict['curr_obj_rot'], obs_dict['targ_obj_rot']) / np.pi
 
-        print(f"Error Pose: {obs_dict['hand_qpos_err']}    Error Obj:{obs_dict['obj_com_err']}")
+        # print(f"Error Pose: {obs_dict['hand_qpos_err']}    Error Obj:{obs_dict['obj_com_err']}")
         # self.sim.model.body_names --> body names
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         return obs_dict
 
 
@@ -202,7 +212,7 @@ RoboHive:> For environment credits, please cite -
 
         # calculate both object "matching"
         obj_com_err = np.sqrt(self.norm2(tgt_obj_com - obj_com))
-        obj_rot_err = self.rotation_distance(obj_rot, tgt_obj_rot, False) / np.pi
+        obj_rot_err = 0 #self.rotation_distance(obj_rot, tgt_obj_rot, False) / np.pi
         obj_reward = np.exp(-self.obj_err_scale * (obj_com_err + 0.1 * obj_rot_err))
 
         # calculate lift bonus
@@ -238,7 +248,8 @@ RoboHive:> For environment credits, please cite -
             # Must keys
             ('sparse',  0),
             ('solved',  0),
-            ('done',    self.check_termination(obs_dict)),
+            # ('done',    self.check_termination(obs_dict)),
+            ('done',   False),
         ))
         rwd_dict['dense'] = np.sum([wt*rwd_dict[key] for key, wt in self.rwd_keys_wt.items()], axis=0)
 
@@ -266,6 +277,7 @@ RoboHive:> For environment credits, please cite -
         # print("Reset")
         self.ref.reset()
         obs = super().reset(self.init_qpos, self.init_qvel)
+        # print(self.time, self.sim.data.qpos)
         return obs
 
 
