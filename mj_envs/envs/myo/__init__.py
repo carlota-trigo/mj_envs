@@ -285,6 +285,7 @@ register_env_with_variants(id='myoHandPoseRandom-v0',  #reconsider
 
 
 # Gait Torso Reaching ==============================
+'''
 register_env_with_variants(id='myoLegReachFixed-v0',
         entry_point='mj_envs.envs.myo.walk_v0:ReachEnvV0',
         max_episode_steps=150,
@@ -299,7 +300,30 @@ register_env_with_variants(id='myoLegReachFixed-v0',
             'far_th': 0.44
         }
     )
-
+'''
+register_env_with_variants(id='myoLegReachFixed-v0',
+        entry_point='mj_envs.envs.myo.walk_v0:ReachEnvV0',
+        max_episode_steps=500,
+        # max_episode_steps=150,
+        kwargs={
+            'model_path': curr_dir+'/../../sims/myo_sim/gait/myolegs.xml',
+            'target_reach_range': {
+                'pelvis': ((-0.0, -0.0, .90), (0.0, 0.0, .90)),
+                # 'pelvis': ((-.005, -.005, .9), (0.005, 0.005, .9)),
+                # 'pelvis': ((-0.05, -0.05, -0.75), (0.05, 0.05, 0.95)),
+                # 'pelvis': ((-.005, -.005, .75), (0.005, 0.005, .9)),
+                },
+            'normalize_act': True,
+            'far_th': 0.5,
+            'weighted_reward_keys':{
+                                "reach": 1.0,
+                                "bonus": 0,
+                                "duration":10,
+                                "act_reg": 0,
+                                "penalty": 0
+                }        
+            }
+    )
 
 # Hand-Joint Reaching ==============================
 register_env_with_variants(id='myoHandReachFixed-v0',
