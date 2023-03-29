@@ -713,7 +713,7 @@ class Robot():
               blocking = True
               ):
 
-        prompt("Resetting {}".format(self.name), 'white', 'on_grey', flush=True)
+        # prompt("Resetting {}".format(self.name), 'white', 'on_grey', flush=True)
 
         # Enforce specs on the request
         #   for actuated dofs => actoator specs

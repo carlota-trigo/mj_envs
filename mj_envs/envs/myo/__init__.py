@@ -303,8 +303,8 @@ register_env_with_variants(id='myoLegReachFixed-v0',
 '''
 register_env_with_variants(id='myoLegReachFixed-v0',
         entry_point='mj_envs.envs.myo.walk_v0:ReachEnvV0',
-        max_episode_steps=500,
-        # max_episode_steps=150,
+        # max_episode_steps=500,
+        max_episode_steps=100,
         kwargs={
             'model_path': curr_dir+'/../../sims/myo_sim/gait/myolegs.xml',
             'target_reach_range': {
@@ -320,7 +320,8 @@ register_env_with_variants(id='myoLegReachFixed-v0',
                                 "bonus": 0,
                                 "duration":10,
                                 "act_reg": 0,
-                                "penalty": 0
+                                "penalty": 0,
+                                # "balance": 1,
                 }        
             }
     )
