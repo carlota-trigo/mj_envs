@@ -1,6 +1,7 @@
 """ =================================================
 # Copyright (c) Facebook, Inc. and its affiliates
 Authors  :: Vikash Kumar (vikashplus@gmail.com), Vittorio Caggiano (caggiano@gmail.com)
+SCRIPT CREATED TO TRY DIFFERENT REWARDS ON THE WALK_V0 ENVIRONMENT. 
 ================================================= """
 
 import collections
@@ -14,17 +15,15 @@ from mj_envs.envs.myo.base_v0 import BaseV0
 class ReachEnvV0(BaseV0):
 
     DEFAULT_OBS_KEYS = ['qpos', 'qvel', 'tip_pos', 'reach_err']
-    
+    # Weights should be positive, unless the contribution of the components of the reward shuld be changed. 
     DEFAULT_RWD_KEYS_AND_WEIGHTS = {
-        "reach": 1.0,
-        "bonus": 4.0,
-        "penalty": 50,
-        "act_reg":0#1
+        "positionError":    1.0,
+        "smallErrorBonus":  4.0,
+        "highError":        50,
+        "metabolicCost":    0
     } 
 
-
     def __init__(self, model_path, obsd_model_path=None, seed=None, **kwargs):
-
         # EzPickle.__init__(**locals()) is capturing the input dictionary of the init method of this class.
         # In order to successfully capture all arguments we need to call gym.utils.EzPickle.__init__(**locals())
         # at the leaf level, when we do inheritance like we do here.
@@ -78,53 +77,44 @@ class ReachEnvV0(BaseV0):
 
     def get_obs_dict(self, sim):
         obs_dict = {}
-        obs_dict['time'] = np.array([sim.data.time])
-        
+
+        obs_dict['time'] = np.array([sim.data.time])      
         obs_dict['qpos'] = sim.data.qpos[:].copy()
-        # print("Qpos: {}".format(obs_dict['qpos']))
         obs_dict['qvel'] = sim.data.qvel[:].copy()*self.dt
-        #print("Qvel: {}".format(obs_dict['qvel']))
         if sim.model.na>0:
             obs_dict['act'] = sim.data.act[:].copy()
-         #   print("Act: {}".format(obs_dict['act']))
-
         # reach error
         obs_dict['tip_pos'] = np.array([])
         obs_dict['target_pos'] = np.array([])
         for isite in range(len(self.tip_sids)):
             obs_dict['tip_pos'] = np.append(obs_dict['tip_pos'], sim.data.site_xpos[self.tip_sids[isite]][2].copy())
-          #  print("TipPos: {}".format(obs_dict['tip_pos']))
             obs_dict['target_pos'] = np.append(obs_dict['target_pos'], sim.data.site_xpos[self.target_sids[isite]][2].copy())
-           # print("TargetPos: {}".format(obs_dict['target_pos']))
         obs_dict['reach_err'] = np.array(obs_dict['target_pos'])-np.array(obs_dict['tip_pos'])
-        #print("ReachError: {}".format(obs_dict['reach_err']))
+
         return obs_dict
 
     def get_reward_dict(self, obs_dict):
-        reach_dist = np.linalg.norm(obs_dict['reach_err'], axis=-1)
-        #reach_dist = obs_dict['reach_err']
-        ep_length = np.linalg.norm(obs_dict['time'], axis=-1)
-        vel_dist = np.linalg.norm(obs_dict['qvel'], axis=-1)
-        act_mag = np.linalg.norm(self.obs_dict['act'], axis=-1)/self.sim.model.na if self.sim.model.na !=0 else 0
-        far_th = self.far_th*len(self.tip_sids) if np.squeeze(obs_dict['time'])>2*self.dt else np.inf
-        # near_th = len(self.tip_sids)*.0125
-        near_th = len(self.tip_sids)*.050
+        positionError = np.linalg.norm(obs_dict['reach_err'], axis=-1)
+        timeStanding = np.linalg.norm(obs_dict['time'], axis=-1)
+        # vel_dist = np.linalg.norm(obs_dict['qvel'], axis=-1)
+        metabolicCost = np.sum(np.square(obs_dict['act']))
+        # act_mag = np.linalg.norm(self.obs_dict['act'], axis=-1)/self.sim.model.na if self.sim.model.na !=0 else 0
+        farThresh = self.far_th*len(self.tip_sids) if np.squeeze(obs_dict['time'])>2*self.dt else np.inf # farThresh = 0.5
+        nearThresh = len(self.tip_sids)*.050 # nearThresh = 0.05
+        # Rewards are defined ni the dictionary with the appropiate sign
         rwd_dict = collections.OrderedDict((
             # Optional Keys
-            ('reach',   -1.*reach_dist ),#-10.*vel_dist
-            #('duration', 1.*self.sim.data.time),
-            ('bonus',   1.*(reach_dist<2*near_th) + 1.*(reach_dist<near_th)),
-            ('duration', 1.*ep_length),
-            ('act_reg', -100.*act_mag),
-            ('penalty', -1.*(reach_dist>far_th)),
+            ('positionError',       -1.*positionError ),#-10.*vel_dist
+            ('smallErrorBonus',     1.*(positionError<2*nearThresh) + 1.*(positionError<nearThresh)),
+            ('timeStanding',        1.*timeStanding),
+            ('metabolicCost',       -1.*metabolicCost),
+            ('highError',           -1.*(positionError>farThresh)),
             # Must keys
-            ('sparse',  -1.*reach_dist),
-            ('solved',  reach_dist<near_th),
-            ('done',    reach_dist > far_th),
+            ('sparse',              -1.*positionError),
+            ('solved',              1.*positionError<nearThresh),  # standing task succesful
+            ('done',                1.*positionError > farThresh), # model has failed to complete the task 
         ))
-        
-        #print("%s, %s, %s" % (self.cpt, self.sim.data.site_xpos[1][2], rwd_dict['done']))
-        #self.cpt = self.cpt + 1
+
         rwd_dict['dense'] = np.sum([wt*rwd_dict[key] for key, wt in self.rwd_keys_wt.items()], axis=0)
         return rwd_dict
 

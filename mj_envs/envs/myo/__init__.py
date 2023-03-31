@@ -325,7 +325,30 @@ register_env_with_variants(id='myoLegReachFixed-v0',
                 }        
             }
     )
-
+register_env_with_variants(id='myoLegReachFixed-v1',
+        entry_point='mj_envs.envs.myo.walk_v1:ReachEnvV0',
+        # max_episode_steps=500,
+        max_episode_steps=100,
+        kwargs={
+            'model_path': curr_dir+'/../../sims/myo_sim/gait/myolegs_notorso.xml',
+            'target_reach_range': {
+                'pelvis': ((-0.0, -0.0, .90), (0.0, 0.0, .90)),
+                # 'pelvis': ((-.005, -.005, .9), (0.005, 0.005, .9)),
+                # 'pelvis': ((-0.05, -0.05, -0.75), (0.05, 0.05, 0.95)),
+                # 'pelvis': ((-.005, -.005, .75), (0.005, 0.005, .9)),
+                },
+            'normalize_act': True,
+            'far_th': 0.5,
+            'weighted_reward_keys':{
+                                "positionError":        1000.0,
+                                "smallErrorBonus":      0,
+                                "timeStanding":         1000,
+                                "metabolicCost":        1,
+                                "highError":            0,
+                                # "balance": 1,
+                }        
+            }
+    )
 # Hand-Joint Reaching ==============================
 register_env_with_variants(id='myoHandReachFixed-v0',
         entry_point='mj_envs.envs.myo.reach_v0:ReachEnvV0',
