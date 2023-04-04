@@ -8,6 +8,7 @@ import collections
 import gym
 import numpy as np
 from mj_envs.envs.myo.base_v0 import BaseV0
+from matplotlib import path
 
 
 
@@ -83,9 +84,8 @@ class ReachEnvV0(BaseV0):
             y.append(xpos[label][1]) # storing y position
         # CoM is considered to be the center of mass of the pelvis (for now)
         self.obs_dict['com'] = np.array(xpos['pelvis'])
-        # Storing base of support
-        # [max(y), min(y), min(x), max(x)] where max(y) - calcn, min(y) - toes, min(x) - RF, max(x) - LF
-        self.obs_dict['base_support'] = np.array([max(y), min(y), min(x), max(x)])
+        # Storing base of support - x and y position of right and left calcaneus and toes
+        self.obs_dict['base_support'] =  np.array([x, y])
 
         # print('Ordered keys: {}'.format(self.obs_keys))
         t, obs = self.obsdict2obsvec(self.obs_dict, self.obs_keys)
@@ -119,9 +119,8 @@ class ReachEnvV0(BaseV0):
             y.append(xpos[label][1]) # storing y position
         # CoM is considered to be the center of mass of the pelvis (for now)
         obs_dict['com'] = np.array(xpos['pelvis'])
-        # Storing base of support
-        # [max(y), min(y), min(x), max(x)] where max(y) - calcn, min(y) - toes, min(x) - RF, max(x) - LF
-        obs_dict['base_support'] = np.array([max(y), min(y), min(x), max(x)])
+        # Storing base of support - x and y position of right and left calcaneus and toes
+        obs_dict['base_support'] = np.array([x, y])
 
         return obs_dict
 
@@ -132,7 +131,9 @@ class ReachEnvV0(BaseV0):
         metabolicCost = np.sum(np.square(obs_dict['act']))
         # act_mag = np.linalg.norm(self.obs_dict['act'], axis=-1)/self.sim.model.na if self.sim.model.na !=0 else 0
         # Within: center of mass in between toes and calcaneous and rihgt foot left foot
-        within = (obs_dict['base_support'][0][0][1] < obs_dict['com'][0][0][1] < obs_dict['base_support'][0][0][0]) and (obs_dict['base_support'][0][0][2] < obs_dict['com'][0][0][0] < obs_dict['base_support'][0][0][3])
+        bos = path.Path([(obs_dict['base_support'][0][0][0][0], obs_dict['base_support'][0][0][1][0]), (obs_dict['base_support'][0][0][0][1], obs_dict['base_support'][0][0][1][1]), (obs_dict['base_support'][0][0][0][2], obs_dict['base_support'][0][0][1][2]), (obs_dict['base_support'][0][0][0][3], obs_dict['base_support'][0][0][1][3])])
+        within = bos.contains_points(np.array(obs_dict['com'][0][0]).reshape(1,2))
+
         com_bos = 100 if within else -100 # Reward is 100 if com is in bos.
         farThresh = self.far_th*len(self.tip_sids) if np.squeeze(obs_dict['time'])>2*self.dt else np.inf # farThresh = 0.5
         nearThresh = len(self.tip_sids)*.050 # nearThresh = 0.05
