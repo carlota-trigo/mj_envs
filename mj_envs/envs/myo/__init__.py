@@ -345,10 +345,11 @@ register_env_with_variants(id='myoLegReachFixed-v1',
                                 "timeStanding":         1000,
                                 "metabolicCost":        1,
                                 "highError":            0,
-                                # "balance": 1,
+                                "centerOfMass":         1,
                 }        
             }
     )
+
 # Hand-Joint Reaching ==============================
 register_env_with_variants(id='myoHandReachFixed-v0',
         entry_point='mj_envs.envs.myo.reach_v0:ReachEnvV0',

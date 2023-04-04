@@ -43,12 +43,13 @@ class MjPySimScene(SimScene):
         Returns:
             A mujoco_py MjSim object.
         """
+
         if isinstance(model_handle, str):
             if not os.path.isfile(model_handle):
                 raise ValueError(
                     '[MjPySimScene] Invalid model file path: {}'.format(
                         model_handle))
-
+            
             model = mujoco_py.load_model_from_path(model_handle)
             sim = mujoco_py.MjSim(model)
         else:

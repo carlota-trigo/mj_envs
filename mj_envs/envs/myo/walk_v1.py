@@ -7,7 +7,6 @@ SCRIPT CREATED TO TRY DIFFERENT REWARDS ON THE WALK_V0 ENVIRONMENT.
 import collections
 import gym
 import numpy as np
-
 from mj_envs.envs.myo.base_v0 import BaseV0
 
 
@@ -71,6 +70,23 @@ class ReachEnvV0(BaseV0):
             self.obs_dict['tip_pos'] = np.append(self.obs_dict['tip_pos'], self.sim.data.site_xpos[self.tip_sids[isite]][2].copy())
             self.obs_dict['target_pos'] = np.append(self.obs_dict['target_pos'], self.sim.data.site_xpos[self.target_sids[isite]][2].copy())
         self.obs_dict['reach_err'] = np.array(self.obs_dict['target_pos'])-np.array(self.obs_dict['tip_pos'])
+        
+        # center of mass and base of support
+        xpos = {}
+        for names in self.sim.model.body_names:
+            xpos[names] = self.sim.data.xipos[self.sim.model.body_name2id(names)][:2] # store x and y position of the com of the bodies
+        # Bodies relevant for hte base of support: 
+        labels = ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']
+        x, y = [], [] # Storing position of the foot
+        for label in labels:
+            x.append(xpos[label][0]) # storing x position
+            y.append(xpos[label][1]) # storing y position
+        # CoM is considered to be the center of mass of the pelvis (for now)
+        self.obs_dict['com'] = np.array(xpos['pelvis'])
+        # Storing base of support
+        # [max(y), min(y), min(x), max(x)] where max(y) - calcn, min(y) - toes, min(x) - RF, max(x) - LF
+        self.obs_dict['base_support'] = np.array([max(y), min(y), min(x), max(x)])
+
         # print('Ordered keys: {}'.format(self.obs_keys))
         t, obs = self.obsdict2obsvec(self.obs_dict, self.obs_keys)
         return obs
@@ -90,6 +106,22 @@ class ReachEnvV0(BaseV0):
             obs_dict['tip_pos'] = np.append(obs_dict['tip_pos'], sim.data.site_xpos[self.tip_sids[isite]][2].copy())
             obs_dict['target_pos'] = np.append(obs_dict['target_pos'], sim.data.site_xpos[self.target_sids[isite]][2].copy())
         obs_dict['reach_err'] = np.array(obs_dict['target_pos'])-np.array(obs_dict['tip_pos'])
+        # center of mass and base of support
+        xpos = {}
+        for names in sim.model.body_names:
+            xpos[names] = np.array(sim.data.xipos[sim.model.body_name2id(names)])[:2] # store x and y position of the bodies of interest in a dictionary
+
+        # Storing position of the foot 
+        labels = ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']
+        x, y = [], []
+        for label in labels:
+            x.append(xpos[label][0]) # storing x position
+            y.append(xpos[label][1]) # storing y position
+        # CoM is considered to be the center of mass of the pelvis (for now)
+        obs_dict['com'] = np.array(xpos['pelvis'])
+        # Storing base of support
+        # [max(y), min(y), min(x), max(x)] where max(y) - calcn, min(y) - toes, min(x) - RF, max(x) - LF
+        obs_dict['base_support'] = np.array([max(y), min(y), min(x), max(x)])
 
         return obs_dict
 
@@ -99,6 +131,9 @@ class ReachEnvV0(BaseV0):
         # vel_dist = np.linalg.norm(obs_dict['qvel'], axis=-1)
         metabolicCost = np.sum(np.square(obs_dict['act']))
         # act_mag = np.linalg.norm(self.obs_dict['act'], axis=-1)/self.sim.model.na if self.sim.model.na !=0 else 0
+        # Within: center of mass in between toes and calcaneous and rihgt foot left foot
+        within = (obs_dict['base_support'][0][0][1] < obs_dict['com'][0][0][1] < obs_dict['base_support'][0][0][0]) and (obs_dict['base_support'][0][0][2] < obs_dict['com'][0][0][0] < obs_dict['base_support'][0][0][3])
+        com_bos = 100 if within else -100 # Reward is 100 if com is in bos.
         farThresh = self.far_th*len(self.tip_sids) if np.squeeze(obs_dict['time'])>2*self.dt else np.inf # farThresh = 0.5
         nearThresh = len(self.tip_sids)*.050 # nearThresh = 0.05
         # Rewards are defined ni the dictionary with the appropiate sign
@@ -109,12 +144,12 @@ class ReachEnvV0(BaseV0):
             ('timeStanding',        1.*timeStanding),
             ('metabolicCost',       -1.*metabolicCost),
             ('highError',           -1.*(positionError>farThresh)),
+            ('centerOfMass',        1.*(com_bos)),
             # Must keys
             ('sparse',              -1.*positionError),
             ('solved',              1.*positionError<nearThresh),  # standing task succesful
             ('done',                1.*positionError > farThresh), # model has failed to complete the task 
         ))
-
         rwd_dict['dense'] = np.sum([wt*rwd_dict[key] for key, wt in self.rwd_keys_wt.items()], axis=0)
         return rwd_dict
 

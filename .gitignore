@@ -1,5 +1,5 @@
 *.DS_Store
-
+mj_envs/sims/myo_sim/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
