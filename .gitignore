@@ -111,3 +111,4 @@ venv.bak/
 _build
 dist
 tags
+mj_envs/sims/myo_sim
