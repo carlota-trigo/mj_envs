@@ -8,7 +8,7 @@ import collections
 import gym
 import numpy as np
 from mj_envs.envs.myo.base_v0 import BaseV0
-from matplotlib import path
+import matplotlib.path as mplPath
 
 
 
@@ -74,8 +74,7 @@ class ReachEnvV0(BaseV0):
         
         # center of mass and base of support
         xpos = {}
-        for names in self.sim.model.body_names:
-            xpos[names] = self.sim.data.xipos[self.sim.model.body_name2id(names)][:2] # store x and y position of the com of the bodies
+        for names in self.sim.model.body_names: xpos[names] = self.sim.data.xipos[self.sim.model.body_name2id(names)] # store x and y position of the com of the bodies
         # Bodies relevant for hte base of support: 
         labels = ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']
         x, y = [], [] # Storing position of the foot
@@ -83,9 +82,9 @@ class ReachEnvV0(BaseV0):
             x.append(xpos[label][0]) # storing x position
             y.append(xpos[label][1]) # storing y position
         # CoM is considered to be the center of mass of the pelvis (for now)
-        self.obs_dict['com'] = np.array(xpos['pelvis'])
+        self.obs_dict['com'] = xpos['pelvis']
         # Storing base of support - x and y position of right and left calcaneus and toes
-        self.obs_dict['base_support'] =  np.array([x, y])
+        self.obs_dict['base_support'] =  [x, y]
 
         # print('Ordered keys: {}'.format(self.obs_keys))
         t, obs = self.obsdict2obsvec(self.obs_dict, self.obs_keys)
@@ -106,21 +105,17 @@ class ReachEnvV0(BaseV0):
             obs_dict['tip_pos'] = np.append(obs_dict['tip_pos'], sim.data.site_xpos[self.tip_sids[isite]][2].copy())
             obs_dict['target_pos'] = np.append(obs_dict['target_pos'], sim.data.site_xpos[self.target_sids[isite]][2].copy())
         obs_dict['reach_err'] = np.array(obs_dict['target_pos'])-np.array(obs_dict['tip_pos'])
+        
         # center of mass and base of support
-        xpos = {}
-        for names in sim.model.body_names:
-            xpos[names] = np.array(sim.data.xipos[sim.model.body_name2id(names)])[:2] # store x and y position of the bodies of interest in a dictionary
+        x, y = np.array([]), np.array([])
+        for label in ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']:
+            xpos = np.array(sim.data.xipos[sim.model.body_name2id(label)])[:2] # select x and y position of the current body
+            x = np.append(x, xpos[0])
+            y = np.append(y, xpos[1])
 
-        # Storing position of the foot 
-        labels = ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']
-        x, y = [], []
-        for label in labels:
-            x.append(xpos[label][0]) # storing x position
-            y.append(xpos[label][1]) # storing y position
+        obs_dict['base_support'] = np.append(x, y)
         # CoM is considered to be the center of mass of the pelvis (for now)
-        obs_dict['com'] = np.array(xpos['pelvis'])
-        # Storing base of support - x and y position of right and left calcaneus and toes
-        obs_dict['base_support'] = np.array([x, y])
+        obs_dict['com'] = np.array(sim.data.xipos[sim.model.body_name2id('pelvis')])[:2]
 
         return obs_dict
 
@@ -131,8 +126,10 @@ class ReachEnvV0(BaseV0):
         metabolicCost = np.sum(np.square(obs_dict['act']))
         # act_mag = np.linalg.norm(self.obs_dict['act'], axis=-1)/self.sim.model.na if self.sim.model.na !=0 else 0
         # Within: center of mass in between toes and calcaneous and rihgt foot left foot
-        bos = path.Path([(obs_dict['base_support'][0][0][0][0], obs_dict['base_support'][0][0][1][0]), (obs_dict['base_support'][0][0][0][1], obs_dict['base_support'][0][0][1][1]), (obs_dict['base_support'][0][0][0][2], obs_dict['base_support'][0][0][1][2]), (obs_dict['base_support'][0][0][0][3], obs_dict['base_support'][0][0][1][3])])
-        within = bos.contains_points(np.array(obs_dict['com'][0][0]).reshape(1,2))
+        baseSupport = obs_dict['base_support'].reshape(2,4)
+        centerMass = np.squeeze(obs_dict['com']) #.reshape(1,2)
+        bos = mplPath.Path(baseSupport.T)
+        within = bos.contains_point(centerMass)
 
         com_bos = 100 if within else -100 # Reward is 100 if com is in bos.
         farThresh = self.far_th*len(self.tip_sids) if np.squeeze(obs_dict['time'])>2*self.dt else np.inf # farThresh = 0.5
