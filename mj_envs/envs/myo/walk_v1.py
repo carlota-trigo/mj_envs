@@ -68,8 +68,8 @@ class ReachEnvV0(BaseV0):
         self.obs_dict['tip_pos'] = np.array([])
         self.obs_dict['target_pos'] = np.array([])
         for isite in range(len(self.tip_sids)):
-            self.obs_dict['tip_pos'] = np.append(self.obs_dict['tip_pos'], self.sim.data.site_xpos[self.tip_sids[isite]][2].copy())
-            self.obs_dict['target_pos'] = np.append(self.obs_dict['target_pos'], self.sim.data.site_xpos[self.target_sids[isite]][2].copy())
+            self.obs_dict['tip_pos'] = np.append(self.obs_dict['tip_pos'], self.sim.data.site_xpos[self.tip_sids[isite]].copy())
+            self.obs_dict['target_pos'] = np.append(self.obs_dict['target_pos'], self.sim.data.site_xpos[self.target_sids[isite]].copy())
         self.obs_dict['reach_err'] = np.array(self.obs_dict['target_pos'])-np.array(self.obs_dict['tip_pos'])
         
         # center of mass and base of support
@@ -102,8 +102,8 @@ class ReachEnvV0(BaseV0):
         obs_dict['tip_pos'] = np.array([])
         obs_dict['target_pos'] = np.array([])
         for isite in range(len(self.tip_sids)):
-            obs_dict['tip_pos'] = np.append(obs_dict['tip_pos'], sim.data.site_xpos[self.tip_sids[isite]][2].copy())
-            obs_dict['target_pos'] = np.append(obs_dict['target_pos'], sim.data.site_xpos[self.target_sids[isite]][2].copy())
+            obs_dict['tip_pos'] = np.append(obs_dict['tip_pos'], sim.data.site_xpos[self.tip_sids[isite]].copy())
+            obs_dict['target_pos'] = np.append(obs_dict['target_pos'], sim.data.site_xpos[self.target_sids[isite]].copy())
         obs_dict['reach_err'] = np.array(obs_dict['target_pos'])-np.array(obs_dict['tip_pos'])
         
         # center of mass and base of support
@@ -120,8 +120,9 @@ class ReachEnvV0(BaseV0):
         return obs_dict
 
     def get_reward_dict(self, obs_dict):
-        positionError = np.linalg.norm(obs_dict['reach_err'], axis=-1)
-        timeStanding = np.linalg.norm(obs_dict['time'], axis=-1)
+        positionError = np.linalg.norm(obs_dict['reach_err'][0][0][:2], axis=-1) # error x y 
+        # positionError = np.linalg.norm(obs_dict['reach_err'][0][0][:2], axis=-1) # error x and y
+        # timeStanding = np.linalg.norm(obs_dict['time'], axis=-1)
         # vel_dist = np.linalg.norm(obs_dict['qvel'], axis=-1)
         metabolicCost = np.sum(np.square(obs_dict['act']))
         # act_mag = np.linalg.norm(self.obs_dict['act'], axis=-1)/self.sim.model.na if self.sim.model.na !=0 else 0
@@ -131,7 +132,7 @@ class ReachEnvV0(BaseV0):
         bos = mplPath.Path(baseSupport.T)
         within = bos.contains_point(centerMass)
 
-        com_bos = 100 if within else -100 # Reward is 100 if com is in bos.
+        com_bos = 1 if within else -1 # Reward is 100 if com is in bos.
         farThresh = self.far_th*len(self.tip_sids) if np.squeeze(obs_dict['time'])>2*self.dt else np.inf # farThresh = 0.5
         nearThresh = len(self.tip_sids)*.050 # nearThresh = 0.05
         # Rewards are defined ni the dictionary with the appropiate sign
@@ -139,7 +140,7 @@ class ReachEnvV0(BaseV0):
             # Optional Keys
             ('positionError',       -1.*positionError ),#-10.*vel_dist
             ('smallErrorBonus',     1.*(positionError<2*nearThresh) + 1.*(positionError<nearThresh)),
-            ('timeStanding',        1.*timeStanding),
+            # ('timeStanding',        1.*timeStanding), 
             ('metabolicCost',       -1.*metabolicCost),
             ('highError',           -1.*(positionError>farThresh)),
             ('centerOfMass',        1.*(com_bos)),
@@ -148,6 +149,7 @@ class ReachEnvV0(BaseV0):
             ('solved',              1.*positionError<nearThresh),  # standing task succesful
             ('done',                1.*positionError > farThresh), # model has failed to complete the task 
         ))
+
         rwd_dict['dense'] = np.sum([wt*rwd_dict[key] for key, wt in self.rwd_keys_wt.items()], axis=0)
         return rwd_dict
 
