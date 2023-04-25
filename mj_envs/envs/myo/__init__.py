@@ -343,7 +343,7 @@ register_env_with_variants(id='myoLegReachFixed-v1',
                                 "positionError":        1,
                                 "smallErrorBonus":      0,
                                 # "timeStanding":         1,
-                                "metabolicCost":        0,
+                                "metabolicCost":        0.5,
                                 "highError":            0,
                                 "centerOfMass":         1,
                 }        

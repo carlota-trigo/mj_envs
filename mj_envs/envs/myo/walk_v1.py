@@ -82,7 +82,10 @@ class ReachEnvV0(BaseV0):
             x.append(xpos[label][0]) # storing x position
             y.append(xpos[label][1]) # storing y position
         # CoM is considered to be the center of mass of the pelvis (for now)
-        self.obs_dict['com'] = xpos['pelvis']
+        pos = self.sim.data.xipos
+        mass = self.sim.model.body_mass
+        com = np.sum(pos * mass.reshape((-1, 1)), axis=0) / np.sum(mass)
+        self.obs_dict['com'] = com[:2]
         # Storing base of support - x and y position of right and left calcaneus and toes
         self.obs_dict['base_support'] =  [x, y]
 
@@ -114,13 +117,16 @@ class ReachEnvV0(BaseV0):
             y = np.append(y, xpos[1])
 
         obs_dict['base_support'] = np.append(x, y)
-        # CoM is considered to be the center of mass of the pelvis (for now)
-        obs_dict['com'] = np.array(sim.data.xipos[sim.model.body_name2id('pelvis')])[:2]
+        # CoM is considered to be the center of mass of the pelvis (for now) 
+        pos = sim.data.xipos
+        mass = sim.model.body_mass
+        com = np.sum(pos * mass.reshape((-1, 1)), axis=0) / np.sum(mass)
+        obs_dict['com'] = com[:2]
 
         return obs_dict
 
     def get_reward_dict(self, obs_dict):
-        positionError = np.linalg.norm(obs_dict['reach_err'][0][0][:2], axis=-1) # error x y 
+        positionError = np.linalg.norm(obs_dict['reach_err'], axis=-1) # error x y and z
         # positionError = np.linalg.norm(obs_dict['reach_err'][0][0][:2], axis=-1) # error x and y
         # timeStanding = np.linalg.norm(obs_dict['time'], axis=-1)
         # vel_dist = np.linalg.norm(obs_dict['qvel'], axis=-1)
