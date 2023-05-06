@@ -308,7 +308,7 @@ register_env_with_variants(id='myoLegReachFixed-v0',
         kwargs={
             'model_path': curr_dir+'/../../sims/myo_sim/gait/myolegs.xml',
             'target_reach_range': {
-                'pelvis': ((-0.0, -0.0, .90), (0.0, 0.0, .90)),
+                 'pelvis': ((-0.0, -0.0, .90), (0.0, 0.0, .90)),
                 # 'pelvis': ((-.005, -.005, .9), (0.005, 0.005, .9)),
                 # 'pelvis': ((-0.05, -0.05, -0.75), (0.05, 0.05, 0.95)),
                 # 'pelvis': ((-.005, -.005, .75), (0.005, 0.005, .9)),
@@ -332,8 +332,8 @@ register_env_with_variants(id='myoLegReachFixed-v1',
         kwargs={
             'model_path': curr_dir+'/../../sims/myo_sim/gait/myolegs_notorso.xml',
             'target_reach_range': {
-                'pelvis': ((-0.0, -0.0, .90), (0.0, 0.0, .90)),
-                # 'pelvis': ((-.005, -.005, .9), (0.005, 0.005, .9)),
+                #'pelvis': ((-0.0, -0.0, .90), (0.0, 0.0, .90)),
+                'pelvis': ((-.005, -.005, .9), (0.005, 0.005, .9)),
                 # 'pelvis': ((-0.05, -0.05, -0.75), (0.05, 0.05, 0.95)),
                 # 'pelvis': ((-.005, -.005, .75), (0.005, 0.005, .9)),
                 },
@@ -343,7 +343,7 @@ register_env_with_variants(id='myoLegReachFixed-v1',
                                 "positionError":        1,
                                 "smallErrorBonus":      0,
                                 # "timeStanding":         1,
-                                "metabolicCost":        0.5,
+                                "metabolicCost":        0.7,
                                 "highError":            0,
                                 "centerOfMass":         1,
                 }        
