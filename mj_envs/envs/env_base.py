@@ -257,13 +257,14 @@ class MujocoEnv(gym.Env, gym.utils.EzPickle, ObsVecDict):
     def apply_perturbation(self):
         # generate random force magnitude between 3 and 5 Newtons
         force_magnitude = np.random.uniform(3, 5)
-        
+        print(force_magnitude)
         # generate random direction of force
         force_direction = np.random.normal(size=(3,))
         force_direction /= np.linalg.norm(force_direction)
-        
+        print(force_direction)
         # apply perturbation force to the robot model
         perturbation_force = force_magnitude * force_direction
+        print(perturbation_force)
         self.robot.apply_perturbation(perturbation_force)
         
     def get_obs(self):
@@ -446,6 +447,7 @@ class MujocoEnv(gym.Env, gym.utils.EzPickle, ObsVecDict):
         qpos = self.init_qpos.copy() if reset_qpos is None else reset_qpos
         qvel = self.init_qvel.copy() if reset_qvel is None else reset_qvel
         self.robot.reset(qpos, qvel, **kwargs)
+        self.perturbation_time = np.random.randint(0, 101)
         return self.get_obs()
 
 
