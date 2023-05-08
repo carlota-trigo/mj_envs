@@ -215,17 +215,17 @@ class MujocoEnv(gym.Env, gym.utils.EzPickle, ObsVecDict):
 
 
     def step(self, a):
-        """
-        Step the simulation forward (t => t+1)
-        Uses robot interface to safely step the forward respecting pos/ vel limits
-        Accepts a(t) returns obs(t+1), rwd(t+1), done(t+1), info(t+1)
-        """
+        # check if it's time to apply perturbation
+        if self.timestep == self.perturbation_time:
+            self.apply_perturbation()
+
+        # rest of the code for performing a regular environment step
         a = np.clip(a, self.action_space.low, self.action_space.high)
         self.last_ctrl = self.robot.step(ctrl_desired=a,
-                                        ctrl_normalized=self.normalize_act,
-                                        step_duration=self.dt,
-                                        realTimeSim=self.mujoco_render_frames,
-                                        render_cbk=self.mj_render if self.mujoco_render_frames else None)
+                                          ctrl_normalized=self.normalize_act,
+                                          step_duration=self.dt,
+                                          realTimeSim=self.mujoco_render_frames,
+                                          render_cbk=self.mj_render if self.mujoco_render_frames else None)
         return self.forward()
 
 
@@ -254,7 +254,18 @@ class MujocoEnv(gym.Env, gym.utils.EzPickle, ObsVecDict):
         # returns obs(t+1), rwd(t+1), done(t+1), info(t+1)
         return obs, env_info['rwd_'+self.rwd_mode], bool(env_info['done']), env_info
 
-
+    def apply_perturbation(self):
+        # generate random force magnitude between 3 and 5 Newtons
+        force_magnitude = np.random.uniform(3, 5)
+        
+        # generate random direction of force
+        force_direction = np.random.normal(size=(3,))
+        force_direction /= np.linalg.norm(force_direction)
+        
+        # apply perturbation force to the robot model
+        perturbation_force = force_magnitude * force_direction
+        self.robot.apply_perturbation(perturbation_force)
+        
     def get_obs(self):
         """
         Get observations from the environemnt.

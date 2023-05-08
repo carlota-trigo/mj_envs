@@ -40,7 +40,6 @@ class ReachEnvV0(BaseV0):
         self.cpt = 0
         self._setup(**kwargs)
 
-
     def _setup(self,
             target_reach_range:dict,
             far_th = .35,
