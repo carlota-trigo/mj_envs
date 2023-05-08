@@ -129,7 +129,7 @@ class ReachEnvV0(BaseV0):
         # positionError = np.linalg.norm(obs_dict['reach_err'][0][0][:2], axis=-1) # error x and y
         # timeStanding = np.linalg.norm(obs_dict['time'], axis=-1)
         # vel_dist = np.linalg.norm(obs_dict['qvel'], axis=-1)
-        metabolicCost = np.sum(np.square(obs_dict['act']))
+        metabolicCost = np.sum(np.square(obs_dict['act']))/self.sim.model.na
         # act_mag = np.linalg.norm(self.obs_dict['act'], axis=-1)/self.sim.model.na if self.sim.model.na !=0 else 0
         # Within: center of mass in between toes and calcaneous and rihgt foot left foot
         baseSupport = obs_dict['base_support'].reshape(2,4)
