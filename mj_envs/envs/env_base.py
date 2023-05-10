@@ -215,9 +215,6 @@ class MujocoEnv(gym.Env, gym.utils.EzPickle, ObsVecDict):
 
 
     def step(self, a):
-        # check if it's time to apply perturbation
-        if self.timestep == self.perturbation_time:
-            self.apply_perturbation()
 
         # rest of the code for performing a regular environment step
         a = np.clip(a, self.action_space.low, self.action_space.high)
@@ -254,18 +251,7 @@ class MujocoEnv(gym.Env, gym.utils.EzPickle, ObsVecDict):
         # returns obs(t+1), rwd(t+1), done(t+1), info(t+1)
         return obs, env_info['rwd_'+self.rwd_mode], bool(env_info['done']), env_info
 
-    def apply_perturbation(self):
-        # generate random force magnitude between 3 and 5 Newtons
-        force_magnitude = np.random.uniform(3, 5)
-        print(force_magnitude)
-        # generate random direction of force
-        force_direction = np.random.normal(size=(3,))
-        force_direction /= np.linalg.norm(force_direction)
-        print(force_direction)
-        # apply perturbation force to the robot model
-        perturbation_force = force_magnitude * force_direction
-        print(perturbation_force)
-        self.robot.apply_perturbation(perturbation_force)
+
         
     def get_obs(self):
         """
@@ -447,7 +433,7 @@ class MujocoEnv(gym.Env, gym.utils.EzPickle, ObsVecDict):
         qpos = self.init_qpos.copy() if reset_qpos is None else reset_qpos
         qvel = self.init_qvel.copy() if reset_qvel is None else reset_qvel
         self.robot.reset(qpos, qvel, **kwargs)
-        self.perturbation_time = np.random.randint(0, 101)
+
         return self.get_obs()
 
 
