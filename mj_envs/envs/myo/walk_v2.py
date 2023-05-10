@@ -59,9 +59,9 @@ class ReachEnvV0(BaseV0):
     def step(self, a):
         if self.time == self.perturbation_time: 
             self.sim.data.xfrc_applied[self.sim.model.body_name2id('pelvis'), :] = self.perturbation_magnitude  
+        else: self.sim.data.xfrc_applied[self.sim.model.body_name2id('pelvis'), :] = np.zeros((1, 6))
         # rest of the code for performing a regular environment step
         super().step(self, a)
-
 
     def get_obs_vec(self):
         self.obs_dict['time'] = np.array([self.sim.data.time])
