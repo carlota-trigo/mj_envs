@@ -38,6 +38,8 @@ class ReachEnvV0(BaseV0):
         # created in __init__ to complete the setup.
         super().__init__(model_path=model_path, obsd_model_path=obsd_model_path, seed=seed)
         self.cpt = 0
+        self.perturbation_time = -1
+        self.perturbation_duration = 0
         self._setup(**kwargs)
 
     def _setup(self,
@@ -55,6 +57,19 @@ class ReachEnvV0(BaseV0):
                 **kwargs,
                 )        
         self.init_qpos = self.sim.model.key_qpos[0]
+    
+    def step(self, a):
+        if self.perturbation_time <= self.time < self.perturbation_time + self.perturbation_duration*self.dt : 
+            self.sim.data.xfrc_applied[self.sim.model.body_name2id('pelvis'), :] = self.perturbation_magnitude
+        else: self.sim.data.xfrc_applied[self.sim.model.body_name2id('pelvis'), :] = np.zeros((1, 6))
+        # rest of the code for performing a regular environment step
+        a = np.clip(a, self.action_space.low, self.action_space.high)
+        self.last_ctrl = self.robot.step(ctrl_desired=a,
+                                          ctrl_normalized=self.normalize_act,
+                                          step_duration=self.dt,
+                                          realTimeSim=self.mujoco_render_frames,
+                                          render_cbk=self.mj_render if self.mujoco_render_frames else None)
+        return super().forward()
 
     def get_obs_vec(self):
         self.obs_dict['time'] = np.array([self.sim.data.time])
@@ -158,16 +173,19 @@ class ReachEnvV0(BaseV0):
         rwd_dict['dense'] = np.sum([wt*rwd_dict[key] for key, wt in self.rwd_keys_wt.items()], axis=0)
         return rwd_dict
 
-    # generate a valid target
-    def generate_target_pose(self):
-        for site, span in self.target_reach_range.items():
-            sid =  self.sim.model.site_name2id(site+'_target')
-            self.sim.model.site_pos[sid] = self.np_random.uniform(low=span[0], high=span[1])
-        self.sim.forward()
-
-
+    # generate a perturbation
+    def generate_perturbation(self):
+        M = self.sim.model.body_mass.sum()
+        g = np.abs(self.sim.model.opt.gravity.sum())
+        self.perturbation_time = np.random.uniform(self.time*(0.1*self.horizon), self.time*(0.2*self.horizon)) # between 10 and 20 percent
+        # perturbation_magnitude = np.random.uniform(0.08*M*g, 0.14*M*g)
+        perturbation_magnitude = np.random.uniform(1, 50)
+        self.perturbation_magnitude = [0, perturbation_magnitude, 0, 0, 0, 0] # front and back
+        self.perturbation_duration = 10#20 # steps
+        return
+    
     def reset(self):
-        self.generate_target_pose()
+        self.generate_perturbation()
         self.robot.sync_sims(self.sim, self.sim_obsd)
         obs = super().reset()
         return obs
