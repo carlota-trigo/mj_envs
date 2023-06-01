@@ -343,16 +343,16 @@ register_env_with_variants(id='myoLegReachFixed-v1',
                                 "positionError":        1,
                                 "smallErrorBonus":      0,
                                 # "timeStanding":         1,
-                                "metabolicCost":        0.7,
+                                "metabolicCost":        1,
                                 "highError":            0,
                                 "centerOfMass":         1,
                 }        
             }
     )
-register_env_with_variants(id='myoLegReachFixed-v1',
+register_env_with_variants(id='myoLegReachFixed-v2',
         entry_point='mj_envs.envs.myo.walk_v2:ReachEnvV0',
         # max_episode_steps=500,
-        max_episode_steps=100,
+        max_episode_steps=200,
         kwargs={
             'model_path': curr_dir+'/../../sims/myo_sim/gait/myolegs_notorso.xml',
             'target_reach_range': {
@@ -367,7 +367,7 @@ register_env_with_variants(id='myoLegReachFixed-v1',
                                 "positionError":        1,
                                 "smallErrorBonus":      0,
                                 # "timeStanding":         1,
-                                "metabolicCost":        0.7,
+                                "metabolicCost":        1,
                                 "highError":            0,
                                 "centerOfMass":         1,
                 }        

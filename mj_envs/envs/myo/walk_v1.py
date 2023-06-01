@@ -73,7 +73,7 @@ class ReachEnvV0(BaseV0):
         
         # center of mass and base of support
         xpos = {}
-        for names in self.sim.model.body_names: xpos[names] = self.sim.data.xipos[self.sim.model.body_name2id(names)] # store x and y position of the com of the bodies
+        for names in self.sim.model.body_names: xpos[names] = self.sim.data.xipos[self.sim.model.body_name2id(names)].copy() # store x and y position of the com of the bodies
         # Bodies relevant for hte base of support: 
         labels = ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']
         x, y = [], [] # Storing position of the foot
@@ -81,7 +81,7 @@ class ReachEnvV0(BaseV0):
             x.append(xpos[label][0]) # storing x position
             y.append(xpos[label][1]) # storing y position
         # CoM is considered to be the center of mass of the pelvis (for now)
-        pos = self.sim.data.xipos
+        pos = self.sim.data.xipos.copy()
         mass = self.sim.model.body_mass
         com = np.sum(pos * mass.reshape((-1, 1)), axis=0) / np.sum(mass)
         self.obs_dict['com'] = com[:2]
@@ -111,13 +111,13 @@ class ReachEnvV0(BaseV0):
         # center of mass and base of support
         x, y = np.array([]), np.array([])
         for label in ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']:
-            xpos = np.array(sim.data.xipos[sim.model.body_name2id(label)])[:2] # select x and y position of the current body
+            xpos = np.array(sim.data.xipos[sim.model.body_name2id(label)].copy())[:2] # select x and y position of the current body
             x = np.append(x, xpos[0])
             y = np.append(y, xpos[1])
 
         obs_dict['base_support'] = np.append(x, y)
         # CoM is considered to be the center of mass of the pelvis (for now) 
-        pos = sim.data.xipos
+        pos = sim.data.xipos.copy()
         mass = sim.model.body_mass
         com = np.sum(pos * mass.reshape((-1, 1)), axis=0) / np.sum(mass)
         obs_dict['com'] = com[:2]

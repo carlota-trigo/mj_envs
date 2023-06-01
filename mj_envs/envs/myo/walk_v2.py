@@ -38,6 +38,8 @@ class ReachEnvV0(BaseV0):
         # created in __init__ to complete the setup.
         super().__init__(model_path=model_path, obsd_model_path=obsd_model_path, seed=seed)
         self.cpt = 0
+        self.perturbation_time = -1
+        self.perturbation_duration = 0
         self._setup(**kwargs)
 
     def _setup(self,
@@ -57,11 +59,17 @@ class ReachEnvV0(BaseV0):
         self.init_qpos = self.sim.model.key_qpos[0]
     
     def step(self, a):
-        if self.time == self.perturbation_time: 
-            self.sim.data.xfrc_applied[self.sim.model.body_name2id('pelvis'), :] = self.perturbation_magnitude  
+        if self.perturbation_time <= self.time < self.perturbation_time + self.perturbation_duration*self.dt : 
+            self.sim.data.xfrc_applied[self.sim.model.body_name2id('pelvis'), :] = self.perturbation_magnitude
         else: self.sim.data.xfrc_applied[self.sim.model.body_name2id('pelvis'), :] = np.zeros((1, 6))
         # rest of the code for performing a regular environment step
-        super().step(self, a)
+        a = np.clip(a, self.action_space.low, self.action_space.high)
+        self.last_ctrl = self.robot.step(ctrl_desired=a,
+                                          ctrl_normalized=self.normalize_act,
+                                          step_duration=self.dt,
+                                          realTimeSim=self.mujoco_render_frames,
+                                          render_cbk=self.mj_render if self.mujoco_render_frames else None)
+        return super().forward()
 
     def get_obs_vec(self):
         self.obs_dict['time'] = np.array([self.sim.data.time])
@@ -80,7 +88,7 @@ class ReachEnvV0(BaseV0):
         
         # center of mass and base of support
         xpos = {}
-        for names in self.sim.model.body_names: xpos[names] = self.sim.data.xipos[self.sim.model.body_name2id(names)] # store x and y position of the com of the bodies
+        for names in self.sim.model.body_names: xpos[names] = self.sim.data.xipos[self.sim.model.body_name2id(names)].copy() # store x and y position of the com of the bodies
         # Bodies relevant for hte base of support: 
         labels = ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']
         x, y = [], [] # Storing position of the foot
@@ -88,7 +96,7 @@ class ReachEnvV0(BaseV0):
             x.append(xpos[label][0]) # storing x position
             y.append(xpos[label][1]) # storing y position
         # CoM is considered to be the center of mass of the pelvis (for now)
-        pos = self.sim.data.xipos
+        pos = self.sim.data.xipos.copy()
         mass = self.sim.model.body_mass
         com = np.sum(pos * mass.reshape((-1, 1)), axis=0) / np.sum(mass)
         self.obs_dict['com'] = com[:2]
@@ -118,13 +126,13 @@ class ReachEnvV0(BaseV0):
         # center of mass and base of support
         x, y = np.array([]), np.array([])
         for label in ['calcn_r', 'calcn_l', 'toes_r', 'toes_l']:
-            xpos = np.array(sim.data.xipos[sim.model.body_name2id(label)])[:2] # select x and y position of the current body
+            xpos = np.array(sim.data.xipos[sim.model.body_name2id(label)].copy())[:2] # select x and y position of the current body
             x = np.append(x, xpos[0])
             y = np.append(y, xpos[1])
 
         obs_dict['base_support'] = np.append(x, y)
         # CoM is considered to be the center of mass of the pelvis (for now) 
-        pos = sim.data.xipos
+        pos = sim.data.xipos.copy()
         mass = sim.model.body_mass
         com = np.sum(pos * mass.reshape((-1, 1)), axis=0) / np.sum(mass)
         obs_dict['com'] = com[:2]
@@ -167,11 +175,15 @@ class ReachEnvV0(BaseV0):
 
     # generate a perturbation
     def generate_perturbation(self):
-        self.perturbation_time = np.random.uniform(self.time, self.time*(self.horizon - 10))
-        perturbation_magnitude = np.random.randint(1, 20, size=(1, 3))
-        zeros = np.zeros((1, 3))
-        self.perturbation_magnitude = np.concatenate((perturbation_magnitude, zeros), axis=1)[0]
-
+        M = self.sim.model.body_mass.sum()
+        g = np.abs(self.sim.model.opt.gravity.sum())
+        self.perturbation_time = np.random.uniform(self.time*(0.1*self.horizon), self.time*(0.2*self.horizon)) # between 10 and 20 percent
+        # perturbation_magnitude = np.random.uniform(0.08*M*g, 0.14*M*g)
+        perturbation_magnitude = np.random.uniform(1, 50)
+        self.perturbation_magnitude = [0, perturbation_magnitude, 0, 0, 0, 0] # front and back
+        self.perturbation_duration = 10#20 # steps
+        return
+    
     def reset(self):
         self.generate_perturbation()
         self.robot.sync_sims(self.sim, self.sim_obsd)
